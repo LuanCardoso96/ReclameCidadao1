@@ -6,10 +6,12 @@ export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;
+  Denunciar: undefined;
 };
 
 // Tipos de navegação para cada tela
 export type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 export type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 export type SignUpScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SignUp'>;
-export type ForgotPasswordScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ForgotPassword'>; 
+export type ForgotPasswordScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ForgotPassword'>;
+export type DenunciarScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Denunciar'>; 

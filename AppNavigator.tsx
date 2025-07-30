@@ -6,6 +6,7 @@ import HomeScreen from './HomeScreen';
 import LoginScreen from './LoginScreen';
 import SignUpScreen from './SignUpScreen';
 import ForgotPasswordScreen from './ForgotPasswordScreen';
+import DenunciarScreen from './DenunciarScreen';
 
 import { RootStackParamList } from './types/navigation';
 
@@ -22,6 +23,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="Denunciar" component={DenunciarScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
