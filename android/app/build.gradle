@@ -75,13 +75,13 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
-    compileSdk rootProject.ext.compileSdkVersion
+    compileSdk 35 // Ajustado para compatibilidade com AndroidX
 
     namespace "com.testandoreact"
     defaultConfig {
         applicationId "com.testandoreact"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        minSdkVersion 24 // Ajustado para compatibilidade com gesture-handler
+        targetSdkVersion 34 // Ajustado para compatibilidade com AdMob
         versionCode 1
         versionName "1.0"
     }
@@ -116,4 +116,7 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // Google Mobile Ads
+    implementation 'com.google.android.gms:play-services-ads:24.3.0'
 }
