@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Image, Alert } from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
-
-type RootStackParamList = {
-  Home: undefined;
-  Login: undefined;
-  SignUp: undefined;
-};
-
-type SignUpScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SignUp'>;
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Image, Alert, ActivityIndicator } from 'react-native';
+import FirebaseAuthService from './FirebaseAuthService';
+import { SignUpScreenNavigationProp } from './types/navigation';
+import { simpleFirebaseTest } from './SimpleFirebaseTest';
 
 type Props = {
   navigation: SignUpScreenNavigationProp;
@@ -20,8 +14,9 @@ export default function SignUpScreen({ navigation }: Props) {
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     // Validações
     if (!nomeCompleto.trim()) {
       Alert.alert('Erro', 'Por favor, digite seu nome completo');
@@ -53,17 +48,40 @@ export default function SignUpScreen({ navigation }: Props) {
       return;
     }
 
-    // Se tudo estiver correto, navega para Home
-    Alert.alert(
-      'Sucesso!', 
-      'Conta criada com sucesso!',
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('Home')
-        }
-      ]
-    );
+    setLoading(true);
+    try {
+      // Testar Firebase primeiro
+      console.log('Testando Firebase antes do cadastro...');
+      const firebaseTest = await simpleFirebaseTest();
+      
+      if (!firebaseTest) {
+        Alert.alert('Erro', 'Firebase não está configurado corretamente');
+        return;
+      }
+
+      const userData = await FirebaseAuthService.signUpWithEmail(
+        email,
+        senha,
+        nomeCompleto,
+        telefone
+      );
+      
+      Alert.alert(
+        'Sucesso!', 
+        `Conta criada com sucesso! Bem-vindo, ${userData.nomeCompleto}!`,
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Home')
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Erro no cadastro:', error);
+      Alert.alert('Erro', error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBackToLogin = () => {
@@ -147,10 +165,18 @@ export default function SignUpScreen({ navigation }: Props) {
         />
       </View>
 
-      {/* Botão de criar conta */}
-      <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
-        <Text style={styles.signUpButtonText}>CRIAR CONTA</Text>
-      </TouchableOpacity>
+              {/* Botão de criar conta */}
+        <TouchableOpacity 
+          style={[styles.signUpButton, loading && styles.disabledButton]} 
+          onPress={handleSignUp}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.signUpButtonText}>CRIAR CONTA</Text>
+          )}
+        </TouchableOpacity>
 
       {/* Link para voltar ao login */}
       <TouchableOpacity onPress={handleBackToLogin}>
@@ -217,6 +243,9 @@ const styles = StyleSheet.create({
     color: '#fff', 
     fontSize: 16, 
     fontWeight: 'bold' 
+  },
+  disabledButton: { 
+    backgroundColor: '#95a5a6' 
   },
   backToLoginText: { 
     color: '#fff', 

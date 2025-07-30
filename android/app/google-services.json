@@ -1,0 +1,127 @@
+{
+  "project_info": {
+    "project_number": "836903851800",
+    "firebase_url": "https://testandoreact1-default-rtdb.firebaseio.com",
+    "project_id": "testandoreact1",
+    "storage_bucket": "testandoreact1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:836903851800:android:c1251dda390bbf9bb6306d",
+        "android_client_info": {
+          "package_name": "com.meunovoappanuncios1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "836903851800-3qrfhlb0j9j3h9jfff6m2pqkauppd868.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.meunovoappanuncios1",
+            "certificate_hash": "9bbb3186b2189ef16d8f272bdab59362c395cbb4"
+          }
+        },
+        {
+          "client_id": "836903851800-vp704av1bk104628nnmctgocqp3ovr1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZQUxsdfxAJh8jBoMSQMrsZHP7VIe354w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "836903851800-vp704av1bk104628nnmctgocqp3ovr1v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "836903851800-3qfcbtnquu87sigd4edd5vnt8lv81puf.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.meunovoappanuncios1"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:836903851800:android:1f6f07c9126857c1b6306d",
+        "android_client_info": {
+          "package_name": "com.mycompany.reclamecidadao"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "836903851800-vp704av1bk104628nnmctgocqp3ovr1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZQUxsdfxAJh8jBoMSQMrsZHP7VIe354w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "836903851800-vp704av1bk104628nnmctgocqp3ovr1v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "836903851800-3qfcbtnquu87sigd4edd5vnt8lv81puf.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.meunovoappanuncios1"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:836903851800:android:f6f9102bca4f1630b6306d",
+        "android_client_info": {
+          "package_name": "com.testandoreact"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "836903851800-vp704av1bk104628nnmctgocqp3ovr1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZQUxsdfxAJh8jBoMSQMrsZHP7VIe354w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "836903851800-vp704av1bk104628nnmctgocqp3ovr1v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "836903851800-3qfcbtnquu87sigd4edd5vnt8lv81puf.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.meunovoappanuncios1"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

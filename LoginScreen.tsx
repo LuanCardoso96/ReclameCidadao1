@@ -6,21 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   ImageBackground,
-  Image
+  Image,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
 import BannerAdComponent from './BannerAd';
-
-type RootStackParamList = {
-  Home: undefined;
-  Login: undefined;
-  SignUp: undefined;
-};
-
-type LoginScreenNavigationProp = StackNavigationProp<
-  RootStackParamList,
-  'Login'
->;
+import FirebaseAuthService from './FirebaseAuthService';
+import { LoginScreenNavigationProp } from './types/navigation';
+import { simpleFirebaseTest } from './SimpleFirebaseTest';
 
 type Props = {
   navigation: LoginScreenNavigationProp;
@@ -30,13 +23,51 @@ export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    navigation.navigate('Home');
+  const handleLogin = async () => {
+    if (!email.trim()) {
+      Alert.alert('Erro', 'Por favor, digite seu email');
+      return;
+    }
+
+    if (!senha.trim()) {
+      Alert.alert('Erro', 'Por favor, digite sua senha');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const userData = await FirebaseAuthService.signInWithEmail(email, senha);
+      Alert.alert(
+        'Sucesso!',
+        `Bem-vindo, ${userData.nomeCompleto}!`,
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Home')
+          }
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert('Erro', error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
-    console.log('Login com Google');
+    Alert.alert('Em desenvolvimento', 'Login com Google será implementado em breve');
+  };
+
+  const handleTestFirebase = async () => {
+    console.log('🧪 Iniciando teste do Firebase...');
+    const result = await simpleFirebaseTest();
+    if (result) {
+      Alert.alert('Sucesso', 'Firebase está funcionando corretamente!');
+    } else {
+      Alert.alert('Erro', 'Firebase não está funcionando. Verifique os logs.');
+    }
   };
 
   const handleSignUp = () => {
@@ -100,20 +131,33 @@ export default function LoginScreen({ navigation }: Props) {
             </TouchableOpacity>
             <Text style={styles.rememberText}>Remember me</Text>
           </View>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
         </View>
 
         {/* Botão de login */}
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>LOGIN</Text>
+        <TouchableOpacity 
+          style={[styles.loginButton, loading && styles.disabledButton]} 
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.loginButtonText}>LOGIN</Text>
+          )}
         </TouchableOpacity>
 
         {/* Botão de login com Google */}
         <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
           <Text style={styles.googleIcon}>G</Text>
           <Text style={styles.googleButtonText}>Login with Google</Text>
+        </TouchableOpacity>
+
+        {/* Botão de teste do Firebase */}
+        <TouchableOpacity style={styles.testButton} onPress={handleTestFirebase}>
+          <Text style={styles.testButtonText}>🧪 Testar Firebase</Text>
         </TouchableOpacity>
 
         {/* Link para criar conta */}
@@ -224,6 +268,7 @@ const styles = StyleSheet.create({
   },
 
   loginButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  disabledButton: { backgroundColor: '#95a5a6' },
 
   googleButton: {
     flexDirection: 'row',
@@ -244,6 +289,17 @@ const styles = StyleSheet.create({
   },
 
   googleButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+
+  testButton: {
+    backgroundColor: '#9b59b6',
+    paddingVertical: 12,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 15
+  },
+
+  testButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 
   signUpLink: { marginTop: 10 },
 
