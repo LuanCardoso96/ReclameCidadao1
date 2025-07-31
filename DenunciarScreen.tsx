@@ -9,14 +9,33 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Switch,
+  Alert,
+  Image,
+  Modal,
 } from 'react-native';
 import { DenunciarScreenNavigationProp } from './types/navigation';
-import FirebaseAuthService from './FirebaseAuthService'; // Importa o serviço de autenticação
+import FirebaseAuthService from './FirebaseAuthService';
 import firestore from '@react-native-firebase/firestore';
+import LocationService from './LocationService';
 
 // Ícones (simulados)
 const ArrowLeftIcon = () => <Text style={denunciarStyles.iconText}>←</Text>;
 const CameraIcon = () => <Text style={denunciarStyles.cameraIconText}>📸</Text>;
+const LocationIcon = () => <Text style={denunciarStyles.locationIconText}>📍</Text>;
+
+// Categorias de problemas pré-definidas
+const PROBLEM_CATEGORIES = [
+  { id: 'buraco', label: 'Buraco na via' },
+  { id: 'poste_sem_luz', label: 'Poste sem luz' },
+  { id: 'lixo_acumulado', label: 'Lixo acumulado' },
+  { id: 'esgoto_entupido', label: 'Esgoto entupido' },
+  { id: 'sinalizacao_danificada', label: 'Sinalização danificada' },
+  { id: 'calçada_danificada', label: 'Calçada danificada' },
+  { id: 'arvore_caida', label: 'Árvore caída' },
+  { id: 'iluminacao_publica', label: 'Iluminação pública' },
+  { id: 'transito', label: 'Problema de trânsito' },
+  { id: 'outro', label: 'Outro' },
+];
 
 type Props = {
   navigation: DenunciarScreenNavigationProp;
@@ -25,16 +44,21 @@ type Props = {
 export default function DenunciarScreen({ navigation }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
+  const [rua, setRua] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [estado, setEstado] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
   const [userId, setUserId] = useState<string | null>(null);
   const [reporterName, setReporterName] = useState('Usuário Anônimo');
 
   useEffect(() => {
-    // Escuta mudanças no estado de autenticação para obter o userId e nome do usuário
     const currentUser = FirebaseAuthService.getCurrentUser();
     if (currentUser) {
       setUserId(currentUser.uid);
@@ -45,24 +69,70 @@ export default function DenunciarScreen({ navigation }: Props) {
     }
   }, []);
 
+  // Função para obter localização atual
+  const getCurrentLocation = async () => {
+    setLocationLoading(true);
+    
+    try {
+      console.log('Iniciando obtenção de localização...');
+      const locationData = await LocationService.getCurrentLocation();
+      
+      console.log('Dados de localização recebidos:', locationData);
+      
+      if (locationData && locationData.address) {
+        setRua(locationData.address.street);
+        setBairro(locationData.address.neighborhood);
+        setCidade(locationData.address.city);
+        setEstado(locationData.address.state);
+        Alert.alert('Sucesso', 'Localização obtida e endereço preenchido automaticamente!');
+      } else {
+        console.log('Localização não retornou dados válidos');
+        Alert.alert('Erro', 'Não foi possível obter sua localização. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro ao obter localização:', error);
+      Alert.alert('Erro', 'Não foi possível obter sua localização. Tente novamente.');
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  // Função para obter o título da categoria selecionada
+  const getCategoryTitle = () => {
+    if (selectedCategory === 'outro') {
+      return customCategory || 'Outro problema';
+    }
+    const category = PROBLEM_CATEGORIES.find(cat => cat.id === selectedCategory);
+    return category ? category.label : '';
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
     setMessage('');
     setMessageType('');
 
-    if (!title || !description || !location) {
+    // Validação dos campos obrigatórios
+    if (!selectedCategory || !description || !rua || !bairro || !cidade || !estado) {
       setMessage('Por favor, preencha todos os campos obrigatórios.');
       setMessageType('error');
       setLoading(false);
       return;
     }
 
+    // Monta o endereço completo
+    const fullAddress = `${rua}, ${bairro}, ${cidade} - ${estado}`;
+
     try {
-      // Cria o objeto da denúncia para o Firestore
       const denunciationData = {
-        title,
+        title: getCategoryTitle(),
+        category: selectedCategory,
+        customCategory: selectedCategory === 'outro' ? customCategory : '',
         description,
-        location,
+        location: fullAddress,
+        rua,
+        bairro,
+        cidade,
+        estado,
         isAnonymous,
         reporterName: isAnonymous ? 'Anônimo' : reporterName,
         userId: userId || 'anonymous',
@@ -73,17 +143,22 @@ export default function DenunciarScreen({ navigation }: Props) {
         imageUrl: '',
       };
       
-      // Salva a denúncia no Firestore
       await firestore().collection('denunciations').add(denunciationData);
 
       setMessage('Denúncia enviada com sucesso!');
       setMessageType('success');
+      
+      // Limpa os campos
       setTitle('');
       setDescription('');
-      setLocation('');
+      setSelectedCategory('');
+      setCustomCategory('');
+      setRua('');
+      setBairro('');
+      setCidade('');
+      setEstado('');
       setIsAnonymous(false);
 
-      // Opcionalmente, navega de volta para a home após um pequeno atraso
       setTimeout(() => navigation.navigate('Home'), 1500);
     } catch (error: any) {
       console.log("Erro ao enviar denúncia");
@@ -102,7 +177,7 @@ export default function DenunciarScreen({ navigation }: Props) {
           <ArrowLeftIcon />
         </TouchableOpacity>
         <Text style={denunciarStyles.title}>Fazer Denúncia</Text>
-        <View style={{ width: 30 }} /> {/* Espaçador para alinhamento */}
+        <View style={{ width: 30 }} />
       </View>
 
       <ScrollView 
@@ -117,19 +192,42 @@ export default function DenunciarScreen({ navigation }: Props) {
             </View>
           ) : null}
 
+          {/* Seleção de Categoria */}
           <View style={denunciarStyles.inputGroup}>
-            <Text style={denunciarStyles.label}>Título da Denúncia</Text>
-            <TextInput
-              style={denunciarStyles.input}
-              placeholder="Ex: Buraco na rua, Lixo acumulado..."
-              value={title}
-              onChangeText={setTitle}
-              maxLength={100}
-            />
+            <Text style={denunciarStyles.label}>Tipo de Problema *</Text>
+            <View style={denunciarStyles.categoryContainer}>
+              {PROBLEM_CATEGORIES.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    denunciarStyles.categoryButton,
+                    selectedCategory === category.id && denunciarStyles.categoryButtonSelected
+                  ]}
+                  onPress={() => setSelectedCategory(category.id)}
+                >
+                  <Text style={[
+                    denunciarStyles.categoryButtonText,
+                    selectedCategory === category.id && denunciarStyles.categoryButtonTextSelected
+                  ]}>
+                    {category.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            {selectedCategory === 'outro' && (
+              <TextInput
+                style={[denunciarStyles.input, { marginTop: 10 }]}
+                placeholder="Descreva o tipo de problema..."
+                value={customCategory}
+                onChangeText={setCustomCategory}
+              />
+            )}
           </View>
 
+          {/* Descrição */}
           <View style={denunciarStyles.inputGroup}>
-            <Text style={denunciarStyles.label}>Descrição Detalhada</Text>
+            <Text style={denunciarStyles.label}>Descrição Detalhada *</Text>
             <TextInput
               style={[denunciarStyles.input, denunciarStyles.textArea]}
               placeholder="Descreva o problema com detalhes..."
@@ -140,17 +238,53 @@ export default function DenunciarScreen({ navigation }: Props) {
             />
           </View>
 
+          {/* Endereço */}
           <View style={denunciarStyles.inputGroup}>
-            <Text style={denunciarStyles.label}>Localização (Endereço ou Ponto de Referência)</Text>
+            <Text style={denunciarStyles.label}>Endereço *</Text>
+            
+            {/* Botão para usar localização atual */}
+            <TouchableOpacity
+              style={denunciarStyles.locationButton}
+              onPress={getCurrentLocation}
+              disabled={locationLoading}
+            >
+              <LocationIcon />
+              <Text style={denunciarStyles.locationButtonText}>
+                {locationLoading ? 'Obtendo localização...' : 'Usar localização atual'}
+              </Text>
+              {locationLoading && <ActivityIndicator size="small" color="#fff" style={{ marginLeft: 10 }} />}
+            </TouchableOpacity>
+
             <TextInput
-              style={denunciarStyles.input}
-              placeholder="Ex: Rua das Flores, 123, Centro"
-              value={location}
-              onChangeText={setLocation}
+              style={[denunciarStyles.input, { marginTop: 10 }]}
+              placeholder="Rua/Avenida"
+              value={rua}
+              onChangeText={setRua}
             />
-            <Text style={denunciarStyles.hintText}>
-              *A integração com mapa do Google é complexa e requer configuração de API. Por enquanto, insira o endereço.
-            </Text>
+            
+            <TextInput
+              style={[denunciarStyles.input, { marginTop: 10 }]}
+              placeholder="Bairro"
+              value={bairro}
+              onChangeText={setBairro}
+            />
+            
+            <View style={denunciarStyles.row}>
+              <TextInput
+                style={[denunciarStyles.input, denunciarStyles.halfInput]}
+                placeholder="Cidade"
+                value={cidade}
+                onChangeText={setCidade}
+              />
+              
+              <TextInput
+                style={[denunciarStyles.input, denunciarStyles.halfInput, { marginLeft: 10 }]}
+                placeholder="Estado (UF)"
+                value={estado}
+                onChangeText={setEstado}
+                maxLength={2}
+              />
+            </View>
           </View>
 
           {/* Placeholder para Upload de Imagem */}
@@ -161,7 +295,7 @@ export default function DenunciarScreen({ navigation }: Props) {
               <Text style={denunciarStyles.imageUploadText}>Toque para adicionar uma imagem</Text>
             </TouchableOpacity>
             <Text style={denunciarStyles.hintText}>
-              *O upload de imagens requer armazenamento de arquivos (ex: Firebase Storage) e não está implementado neste exemplo.
+              *O upload de imagens requer armazenamento de arquivos e não está implementado neste exemplo.
             </Text>
           </View>
 
@@ -226,7 +360,7 @@ const denunciarStyles = StyleSheet.create({
   },
   scrollViewContent: {
     padding: 20,
-    paddingBottom: 100, // Espaço extra para o botão não ser cortado
+    paddingBottom: 100,
   },
   formContainer: {
     backgroundColor: '#fff',
@@ -260,7 +394,7 @@ const denunciarStyles = StyleSheet.create({
     textAlign: 'center',
   },
   inputGroup: {
-    marginBottom: 15,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
@@ -278,7 +412,7 @@ const denunciarStyles = StyleSheet.create({
   },
   textArea: {
     height: 100,
-    textAlignVertical: 'top', // Para Android
+    textAlignVertical: 'top',
   },
   hintText: {
     fontSize: 12,
@@ -297,7 +431,7 @@ const denunciarStyles = StyleSheet.create({
     backgroundColor: '#f9f9f9',
   },
   cameraIconText: {
-    fontSize: 30, // Tamanho do ícone da câmera
+    fontSize: 30,
     color: '#888',
     marginRight: 10,
   },
@@ -333,5 +467,63 @@ const denunciarStyles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  // Novos estilos para categorias
+  categoryContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  categoryButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    backgroundColor: '#f9f9f9',
+    minWidth: '48%',
+    alignItems: 'center',
+  },
+  categoryButtonSelected: {
+    backgroundColor: '#1c3d91',
+    borderColor: '#1c3d91',
+  },
+  categoryButtonText: {
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
+  },
+  categoryButtonTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  // Estilos para localização
+  locationButton: {
+    backgroundColor: '#3498db',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  locationButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  locationIconText: {
+    fontSize: 20,
+    color: '#fff',
+  },
+  // Estilos para campos de endereço
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  halfInput: {
+    flex: 1,
+  },
 });
-
