@@ -1,4 +1,5 @@
 import { Platform, PermissionsAndroid, Alert } from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
 
 export interface LocationData {
   latitude: number;
@@ -15,120 +16,290 @@ class LocationService {
   // Solicita permissão de localização
   async requestLocationPermission(): Promise<boolean> {
     if (Platform.OS === 'ios') {
-      return true; // No iOS, a permissão é solicitada automaticamente
+      return true;
     }
 
     try {
+      console.log('LocationService: Verificando permissão de localização...');
+      
+      // Primeiro, verificar se já tem a permissão
+      const hasPermission = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      );
+      
+      if (hasPermission) {
+        console.log('LocationService: Permissão já concedida');
+        return true;
+      }
+      
       console.log('LocationService: Solicitando permissão de localização...');
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {
           title: 'Permissão de Localização',
-          message: 'Este app precisa acessar sua localização para preencher automaticamente o endereço.',
+          message: 'Este app precisa acessar sua localização para preencher automaticamente o endereço das denúncias.',
           buttonNeutral: 'Perguntar depois',
           buttonNegative: 'Cancelar',
-          buttonPositive: 'OK',
+          buttonPositive: 'Permitir',
         }
       );
       
       const isGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
+      console.log('LocationService: Resultado da permissão:', granted);
       console.log('LocationService: Permissão concedida?', isGranted);
-      return isGranted;
+      
+      if (isGranted) {
+        console.log('LocationService: Permissão concedida com sucesso');
+        return true;
+      } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+        console.log('LocationService: Usuário marcou "Nunca perguntar novamente"');
+        Alert.alert(
+          'Permissão Necessária',
+          'Para usar a localização, você precisa habilitar a permissão nas configurações do app.',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Configurações', onPress: () => this.openAppSettings() }
+          ]
+        );
+        return false;
+      } else {
+        console.log('LocationService: Permissão negada pelo usuário');
+        Alert.alert(
+          'Permissão Negada',
+          'Sem permissão de localização, não é possível obter seu endereço automaticamente.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
     } catch (err) {
       console.warn('LocationService: Erro ao solicitar permissão de localização:', err);
+      Alert.alert('Erro', 'Erro ao solicitar permissão de localização. Tente novamente.');
       return false;
     }
   }
 
-  // Obtém a localização atual
-  async getCurrentLocation(): Promise<LocationData | null> {
-    console.log('LocationService: Iniciando obtenção de localização');
+  // Função para abrir configurações do app
+  private openAppSettings() {
+    if (Platform.OS === 'android') {
+      Alert.alert(
+        'Configurações do App',
+        'Vá em Configurações > Apps > ReclameCidadao > Permissões e habilite a localização.',
+        [{ text: 'OK' }]
+      );
+    }
+  }
+
+  // Obtém a localização atual usando GPS real
+  async getCurrentLocation(): Promise<LocationData | undefined> {
+    console.log('LocationService: Iniciando obtenção de localização real...');
     
     try {
       const hasPermission = await this.requestLocationPermission();
       if (!hasPermission) {
         console.log('LocationService: Permissão negada');
         Alert.alert('Permissão Negada', 'Não foi possível acessar sua localização.');
-        return null;
+        return undefined;
       }
 
-      console.log('LocationService: Permissão concedida, simulando localização...');
+      console.log('LocationService: Permissão concedida, obtendo localização GPS...');
 
-      // Simulação de obtenção de localização
-      // Em um app real, você usaria:
-      // import Geolocation from '@react-native-community/geolocation';
-      // 
-      // return new Promise((resolve, reject) => {
-      //   Geolocation.getCurrentPosition(
-      //     (position) => {
-      //       resolve({
-      //         latitude: position.coords.latitude,
-      //         longitude: position.coords.longitude,
-      //       });
-      //     },
-      //     (error) => reject(error),
-      //     { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-      //   );
-      // });
-
-      // Simulação para demonstração
-      return new Promise((resolve) => {
-        console.log('LocationService: Iniciando simulação de 2 segundos...');
-        
-        setTimeout(() => {
-          console.log('LocationService: Simulação concluída, retornando dados...');
-          
-          const mockLocation: LocationData = {
-            latitude: -23.5505,
-            longitude: -46.6333,
-            address: {
-              street: 'Rua das Flores',
-              neighborhood: 'Centro',
-              city: 'São Paulo',
-              state: 'SP',
-            },
-          };
-          
-          console.log('LocationService: Dados finais:', mockLocation);
-          resolve(mockLocation);
-        }, 2000);
+      return new Promise((resolve, reject) => {
+        Geolocation.getCurrentPosition(
+          async (position) => {
+            console.log('LocationService: Posição GPS obtida:', position);
+            
+            const { latitude, longitude } = position.coords;
+            
+            try {
+              // Tentar obter o endereço das coordenadas
+              const address = await this.getAddressFromCoordinates(latitude, longitude);
+              
+              const locationData: LocationData = {
+                latitude,
+                longitude,
+                address,
+              };
+              
+              console.log('LocationService: Dados finais com endereço:', locationData);
+              resolve(locationData);
+            } catch (addressError) {
+              console.log('LocationService: Erro ao obter endereço, retornando apenas coordenadas');
+              // Se não conseguir o endereço, retorna apenas as coordenadas
+              resolve({
+                latitude,
+                longitude,
+              });
+            }
+          },
+          (error) => {
+            console.error('LocationService: Erro ao obter posição GPS:', error);
+            reject(error);
+          },
+          { 
+            enableHighAccuracy: true, 
+            timeout: 15000, 
+            maximumAge: 10000 
+          }
+        );
       });
     } catch (error) {
-      console.error('LocationService: Erro:', error);
-      return null;
+      console.error('LocationService: Erro geral:', error);
+      return undefined;
     }
   }
 
-  // Converte coordenadas em endereço usando Google Geocoding API
+  // Converte coordenadas em endereço usando OpenStreetMap
   async getAddressFromCoordinates(latitude: number, longitude: number): Promise<{
     street: string;
     neighborhood: string;
     city: string;
     state: string;
-  } | null> {
+  } | undefined> {
     try {
-      // Em um app real, você faria uma requisição para a Google Geocoding API
-      // const response = await fetch(
-      //   `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=YOUR_API_KEY`
-      // );
-      // const data = await response.json();
-      // 
-      // if (data.results && data.results.length > 0) {
-      //   const addressComponents = data.results[0].address_components;
-      //   // Processar os componentes do endereço...
-      // }
-
-      // Simulação para demonstração
-      return {
-        street: 'Rua das Flores',
-        neighborhood: 'Centro',
-        city: 'São Paulo',
-        state: 'SP',
+      console.log('LocationService: Convertendo coordenadas para endereço...');
+      console.log('LocationService: Coordenadas recebidas:', latitude, longitude);
+      
+      // Primeira tentativa: OpenStreetMap (gratuita e confiável)
+      try {
+        console.log('LocationService: Tentando OpenStreetMap...');
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=pt-BR`
+        );
+        
+        if (!response.ok) {
+          throw new Error('Erro na requisição de geocoding OpenStreetMap');
+        }
+        
+        const data = await response.json();
+        console.log('LocationService: Resposta da API OpenStreetMap:', data);
+        
+        if (data.address) {
+          const address = data.address;
+          
+          const formattedAddress = {
+            street: this.formatStreetName(address.road || address.street || address.highway || ''),
+            neighborhood: this.formatNeighborhood(address.suburb || address.neighbourhood || address.city_district || ''),
+            city: this.formatCity(address.city || address.town || address.village || address.county || ''),
+            state: this.formatState(address.state || ''),
+          };
+          
+          console.log('LocationService: Endereço formatado OpenStreetMap:', formattedAddress);
+          return formattedAddress;
+        }
+      } catch (osmError) {
+        console.log('LocationService: Erro na API OpenStreetMap:', osmError);
+      }
+      
+      // Segunda tentativa: Endereço baseado na região geográfica
+      const regionAddress = this.getRegionBasedAddress(latitude, longitude);
+      if (regionAddress) {
+        console.log('LocationService: Endereço baseado em região retornado:', regionAddress);
+        return regionAddress;
+      }
+      
+      // Fallback final: retorna um endereço genérico baseado nas coordenadas
+      const fallbackAddress = {
+        street: `Localização GPS (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
+        neighborhood: 'Localização atual',
+        city: 'Sua localização',
+        state: 'GPS',
       };
+      
+      console.log('LocationService: Endereço fallback retornado:', fallbackAddress);
+      return fallbackAddress;
+      
     } catch (error) {
-      console.error('Erro ao converter coordenadas em endereço:', error);
-      return null;
+      console.error('LocationService: Erro ao converter coordenadas em endereço:', error);
+      
+      // Fallback final: retorna um endereço genérico baseado nas coordenadas
+      const fallbackAddress = {
+        street: `Localização GPS (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
+        neighborhood: 'Localização atual',
+        city: 'Sua localização',
+        state: 'GPS',
+      };
+      
+      console.log('LocationService: Endereço fallback por erro:', fallbackAddress);
+      return fallbackAddress;
     }
+  }
+
+  // Função para obter endereço baseado na região geográfica
+  private getRegionBasedAddress(latitude: number, longitude: number): {
+    street: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+  } | undefined {
+    // Determina a região baseada nas coordenadas
+    let region = '';
+    let state = '';
+
+    if (latitude < -20) {
+      if (longitude < -45) {
+        region = 'Região Sudeste';
+        state = 'MG';
+      } else if (longitude < -40) {
+        region = 'Região Sudeste';
+        state = 'RJ';
+      } else {
+        region = 'Região Sudeste';
+        state = 'SP';
+      }
+    } else if (latitude < -10) {
+      if (longitude < -40) {
+        region = 'Região Nordeste';
+        state = 'BA';
+      } else {
+        region = 'Região Nordeste';
+        state = 'PE';
+      }
+    } else {
+      region = 'Região Norte';
+      state = 'AM';
+    }
+
+    return {
+      street: `Localização ${region}`,
+      neighborhood: 'Sua área',
+      city: 'Localização atual',
+      state: state,
+    };
+  }
+
+  // Funções auxiliares para formatação
+  private formatStreetName(street: string): string {
+    if (!street) return 'Rua não identificada';
+    
+    // Remove números e caracteres especiais
+    const cleanStreet = street.replace(/[0-9]/g, '').replace(/[^\w\s]/g, '').trim();
+    
+    if (cleanStreet.toLowerCase().includes('rua')) return cleanStreet;
+    if (cleanStreet.toLowerCase().includes('avenida') || cleanStreet.toLowerCase().includes('av')) return `Avenida ${cleanStreet}`;
+    if (cleanStreet.toLowerCase().includes('estrada')) return `Estrada ${cleanStreet}`;
+    
+    return `Rua ${cleanStreet}`;
+  }
+
+  private formatNeighborhood(neighborhood: string): string {
+    if (!neighborhood) return 'Bairro não identificado';
+    
+    // Capitaliza a primeira letra
+    return neighborhood.charAt(0).toUpperCase() + neighborhood.slice(1).toLowerCase();
+  }
+
+  private formatCity(city: string): string {
+    if (!city) return 'Cidade não identificada';
+    
+    // Capitaliza a primeira letra
+    return city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
+  }
+
+  private formatState(state: string): string {
+    if (!state) return 'Estado não identificado';
+    
+    // Converte para maiúsculas (padrão brasileiro)
+    return state.toUpperCase();
   }
 }
 

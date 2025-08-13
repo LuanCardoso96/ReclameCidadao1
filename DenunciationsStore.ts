@@ -4,6 +4,17 @@ export interface Denunciation {
   title: string;
   description: string;
   location: string;
+  rua?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  // Campos de coordenadas GPS
+  latitude?: number;
+  longitude?: number;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
   isAnonymous: boolean;
   reporterName: string;
   userId: string;
